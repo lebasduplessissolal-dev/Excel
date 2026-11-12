@@ -457,7 +457,9 @@ const PROVIDERS = {
     signupHint: "console.groq.com/keys",
     models: [
       ["llama-3.3-70b-versatile", "llama-3.3-70b-versatile (recommandé, gratuit)"],
-      ["llama-3.1-8b-instant", "llama-3.1-8b-instant (rapide, gratuit)"]
+      ["llama-3.1-8b-instant", "llama-3.1-8b-instant (rapide, gratuit)"],
+      ["openai/gpt-oss-120b", "gpt-oss-120b (gratuit)"],
+      ["openai/gpt-oss-20b", "gpt-oss-20b (gratuit)"]
     ]
   },
   openrouter: {
@@ -466,8 +468,8 @@ const PROVIDERS = {
     signupHint: "openrouter.ai/keys",
     models: [
       ["meta-llama/llama-3.3-70b-instruct:free", "llama-3.3-70b (gratuit)"],
-      ["google/gemini-2.0-flash-exp:free", "gemini-2.0-flash (gratuit)"],
-      ["deepseek/deepseek-chat-v3-0324:free", "deepseek-chat-v3 (gratuit)"]
+      ["deepseek/deepseek-chat-v3-0324:free", "deepseek-chat-v3 (gratuit)"],
+      ["mistralai/mistral-small-3.2-24b-instruct:free", "mistral-small-3.2 (gratuit)"]
     ]
   },
   gemini: {
@@ -475,8 +477,9 @@ const PROVIDERS = {
     name: "Google Gemini",
     signupHint: "aistudio.google.com/apikey",
     models: [
-      ["gemini-2.0-flash", "gemini-2.0-flash (recommandé, gratuit)"],
-      ["gemini-2.0-flash-lite", "gemini-2.0-flash-lite (gratuit)"]
+      ["gemini-2.5-flash", "gemini-2.5-flash (recommandé, gratuit)"],
+      ["gemini-2.0-flash", "gemini-2.0-flash (gratuit)"],
+      ["gemini-2.5-flash-lite", "gemini-2.5-flash-lite (gratuit)"]
     ]
   }
 };
@@ -561,13 +564,16 @@ async function sendMessage() {
         temperature: 0.3
       })
     });
+    const data = await res.json();
     if (!res.ok) {
-      let msg = "Erreur " + res.status;
-      if (res.status === 401 || res.status === 403) msg = "Clé API invalide, expirée ou sans accès à ce modèle. Vérifiez votre clé et le modèle choisi.";
-      else if (res.status === 429) msg = "Limite de requêtes atteinte (quota gratuit). Patientez une minute puis réessayez.";
+      const detail = (data && data.error && data.error.message) ? " — " + data.error.message : "";
+      let msg = "Erreur " + res.status + " (" + p.name + ")";
+      if (res.status === 404) msg = "Modèle introuvable chez " + p.name + detail + " → choisissez un autre modèle dans la liste déroulante, ou dites-moi lequel vous avez choisi.";
+      else if (res.status === 401 || res.status === 403) msg = "Clé API invalide, expirée ou sans accès à ce modèle" + detail;
+      else if (res.status === 429) msg = "Limite de requêtes atteinte (quota gratuit). Patientez une minute puis réessayez." + detail;
+      else msg += detail;
       throw new Error(msg);
     }
-    const data = await res.json();
     const reply = data.choices[0].message.content;
     thinking.remove();
     history.push({ role: "user", content: text });
