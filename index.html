@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Formulaire — Base de formules + Assistant IA</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171e2e; --panel2: #1e2740; --border: #2a3552;
+    --text: #e8edf7; --muted: #93a0bb; --accent: #22c58b; --accent2: #4f8cff;
+    --danger: #ff6b7a; --code-bg: #0b101c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  header { background: linear-gradient(135deg, #123524 0%, #0f1420 55%); border-bottom: 1px solid var(--border); padding: 18px 24px 0; }
+  .header-inner { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 22px; display: flex; align-items: center; gap: 10px; }
+  h1 .logo { background: var(--accent); color: #06281a; font-weight: 800; border-radius: 8px; padding: 3px 9px; font-size: 16px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  nav { display: flex; gap: 4px; margin-top: 14px; }
+  nav button { background: none; border: none; color: var(--muted); padding: 10px 18px; font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent; font-family: inherit; }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  nav button:hover { color: var(--text); }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 24px 60px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .search-row { display: flex; gap: 10px; align-items: center; }
+  .search-box { flex: 1; display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+  .search-box:focus-within { border-color: var(--accent); }
+  .search-box input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-size: 16px; font-family: inherit; }
+  .search-box .icon { color: var(--muted); font-size: 17px; }
+  .kbd-hint { color: var(--muted); font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; }
+  #langToggle { background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 12px; padding: 12px 14px; cursor: pointer; font-family: inherit; font-size: 13px; white-space: nowrap; }
+  #langToggle.on { color: var(--accent); border-color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+  .chip { background: var(--panel); border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .chip.active { background: var(--accent2); border-color: var(--accent2); color: #fff; font-weight: 600; }
+  .chip:hover { color: var(--text); }
+  #count { color: var(--muted); font-size: 13px; margin: 10px 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; margin-top: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 9px; }
+  .card:hover { border-color: #3d4c78; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .fname { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .fname-en { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .badge.cat { color: var(--accent2); border-color: #33477a; }
+  .copy-btn { background: var(--panel2); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+  code { display: block; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; line-height: 1.5; font-family: Consolas, "Courier New", monospace; color: #c8e6d4; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  code.ex { color: #ffd9a0; }
+  .desc { font-size: 13.5px; color: var(--text); line-height: 1.45; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 15px; }
+  .footer-note { margin-top: 26px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  .ai-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 820px) { .ai-layout { grid-template-columns: 1fr; } }
+  .settings { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .settings h3 { font-size: 14px; }
+  .settings label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .settings input, .settings select { width: 100%; background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; color: var(--text); font-size: 13px; font-family: inherit; }
+  .settings input:focus, .settings select:focus { outline: none; border-color: var(--accent2); }
+  .btn { background: var(--accent); color: #06281a; border: none; border-radius: 8px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
+  .hint { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+  .hint a { color: var(--accent2); }
+  .chat-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; height: 640px; }
+  #chatLog { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { max-width: 85%; padding: 12px 15px; border-radius: 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: var(--accent2); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-start; background: var(--panel2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg.bot.err { border-color: var(--danger); color: #ffc9cf; }
+  .msg code { margin: 8px 0; }
+  .chat-input-row { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--border); }
+  #chatInput { flex: 1; background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 14px; font-family: inherit; resize: none; outline: none; }
+  #chatInput:focus { border-color: var(--accent); }
+  #sendBtn:disabled { opacity: .5; cursor: not-allowed; }
+  .typing { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1><span class="logo">fx</span> Excel Formulaire</h1>
+    <div class="subtitle">Base de formules Excel (français / anglais) + assistant IA</div>
+    <nav>
+      <button id="tabSearch" class="active" onclick="showView('search')">📚 Formules</button>
+      <button id="tabAI" onclick="showView('ai')">🤖 Assistant IA</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="viewSearch" class="view active">
+    <div class="search-row">
+      <div class="search-box">
+        <span class="icon">🔍</span>
+        <input id="searchInput" type="text" placeholder="Rechercher une formule, une action… (ex : somme si, vlookup, date, texte)" autocomplete="off">
+        <span class="kbd-hint">/</span>
+      </div>
+      <button id="langToggle" title="Afficher la syntaxe en version française ou anglaise">Syntaxe : FR</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="count"></div>
+    <div class="cards" id="cards"></div>
+    <div class="empty" id="empty" style="display:none">Aucune formule trouvée. Essayez un autre mot-clé.</div>
+    <div class="footer-note">
+      💡 La syntaxe affichée utilise le séparateur <b>;</b> (Excel en français). Si votre Excel est en anglais,
+      remplacez <b>;</b> par <b>,</b>. Le bouton « Syntaxe : FR/EN » bascule l'affichage.
+    </div>
+  </section>
+
+  <section id="viewAI" class="view">
+    <div class="ai-layout">
+      <aside class="settings">
+        <h3>⚙️ Configuration Mistral AI</h3>
+        <div>
+          <label for="apiKey">Clé API Mistral</label>
+          <input id="apiKey" type="password" placeholder="Votre clé API">
+        </div>
+        <div>
+          <label for="model">Modèle</label>
+          <select id="model">
+            <option value="mistral-large-latest">mistral-large-latest (recommandé)</option>
+            <option value="mistral-small-latest">mistral-small-latest (rapide)</option>
+            <option value="open-mistral-nemo">open-mistral-nemo (économique)</option>
+          </select>
+        </div>
+        <button class="btn" onclick="saveKey()">💾 Enregistrer</button>
+        <button class="btn secondary" onclick="clearChat()">🗑️ Effacer la conversation</button>
+        <div class="hint">
+          Votre clé est stockée <b>uniquement dans ce navigateur</b> (localStorage) et n'est envoyée qu'à
+          api.mistral.ai. Obtenez une clé sur
+          <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a>.
+        </div>
+      </aside>
+      <div class="chat-panel">
+        <div id="chatLog"></div>
+        <div class="chat-input-row">
+          <textarea id="chatInput" rows="1" placeholder="Décrivez ce que vous voulez faire… (ex : je veux compter les cellules contenant « Oui »)"></textarea>
+          <button class="btn" id="sendBtn" onclick="sendMessage()">Envoyer</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ================= BASE DE DONNÉES DES FORMULES =================
+   [nomFR, nomEN, catégorie, syntaxe, description, exemple, mots-clés] */
+const DB = [
+  ["SOMME","SUM","Maths","SOMME(nombre1; [nombre2]; ...)","Additionne tous les nombres d'une ou plusieurs plages.","=SOMME(A1:A10)","addition total additionner calculer"],
+  ["SOMME.SI","SUMIF","Maths","SOMME.SI(plage; critère; [somme_plage])","Additionne les cellules qui remplissent un critère.","=SOMME.SI(A1:A10; \">100\")","somme condition critère additionner"],
+  ["SOMME.SI.ENS","SUMIFS","Maths","SOMME.SI.ENS(somme_plage; plage_crit1; crit1; ...)","Additionne avec plusieurs critères.","=SOMME.SI.ENS(C2:C100; A2:A100; \"Nord\"; B2:B100; \">1000\")","somme multiple critères conditions additionner"],
+  ["SOMMEPROD","SUMPRODUCT","Maths","SOMMEPROD(tableau1; [tableau2]; ...)","Multiplie les éléments correspondants puis fait la somme.","=SOMMEPROD(A2:A10; B2:B10)","produit somme pondéré montant total quantité prix"],
+  ["PRODUIT","PRODUCT","Maths","PRODUIT(nombre1; [nombre2]; ...)","Multiplie tous les nombres entre eux.","=PRODUIT(A1:A5)","multiplier produit"],
+  ["ARRONDI","ROUND","Maths","ARRONDI(nombre; nb_chiffres)","Arrondit au nombre de décimales voulu.","=ARRONDI(15,678; 2) → 15,68","arrondir décimales"],
+  ["ARRONDI.SUP","ROUNDUP","Maths","ARRONDI.SUP(nombre; nb_chiffres)","Arrondit toujours vers le haut.","=ARRONDI.SUP(3,21; 1) → 3,3","arrondir supérieur haut"],
+  ["ARRONDI.INF","ROUNDDOWN","Maths","ARRONDI.INF(nombre; nb_chiffres)","Arrondit toujours vers le bas.","=ARRONDI.INF(3,29; 1) → 3,2","arrondir inférieur bas"],
+  ["ARRONDI.AU.MULTIPLE","MROUND","Maths","ARRONDI.AU.MULTIPLE(nombre; multiple)","Arrondit au multiple le plus proche.","=ARRONDI.AU.MULTIPLE(17; 5) → 15","multiple arrondi proche"],
+  ["PLAFOND","CEILING","Maths","PLAFOND(nombre; critère)","Arrondit au multiple supérieur.","=PLAFOND(4,3; 1) → 5","plafond multiple supérieur"],
+  ["PLANCHER","FLOOR","Maths","PLANCHER(nombre; critère)","Arrondit au multiple inférieur.","=PLANCHER(4,7; 1) → 4","plancher multiple inférieur"],
+  ["ENT","INT","Maths","ENT(nombre)","Partie entière (arrondit vers le bas).","=ENT(8,9) → 8","entier partie"],
+  ["TRONQUE","TRUNC","Maths","TRONQUE(nombre; [nb_chiffres])","Tronque les décimales sans arrondir.","=TRONQUE(8,97; 1) → 8,9","tronquer couper décimales"],
+  ["MOD","MOD","Maths","MOD(nombre; diviseur)","Reste d'une division (utile pour pair/impair, alternance de lignes).","=MOD(10; 3) → 1","reste modulo division pair impair alternance ligne"],
+  ["ABS","ABS","Maths","ABS(nombre)","Valeur absolue (sans le signe).","=ABS(-15) → 15","absolue valeur positif"],
+  ["RACINE","SQRT","Maths","RACINE(nombre)","Racine carrée.","=RACINE(144) → 12","racine carrée"],
+  ["PUISSANCE","POWER","Maths","PUISSANCE(nombre; puissance)","Élève un nombre à une puissance.","=PUISSANCE(2; 10) → 1024","puissance exposant carré cube"],
+  ["EXP","EXP","Maths","EXP(nombre)","Exponentielle (e^n).","=EXP(1)","exponentielle e"],
+  ["LN","LN","Maths","LN(nombre)","Logarithme népérien (base e).","=LN(10)","logarithme népérien ln"],
+  ["LOG","LOG","Maths","LOG(nombre; [base])","Logarithme dans la base choisie.","=LOG(100; 10) → 2","logarithme base"],
+  ["SIGNE","SIGN","Maths","SIGNE(nombre)","Renvoie -1, 0 ou 1 selon le signe.","=SIGNE(-8) → -1","signe positif négatif"],
+  ["PI","PI","Maths","PI()","Valeur de π (3,14159…).","=PI()","pi constante"],
+  ["ALEA","RAND","Maths","ALEA()","Nombre aléatoire entre 0 et 1 (recalculé à chaque modification).","=ALEA()","aléatoire hasard random"],
+  ["ALEA.ENTRE.BORNES","RANDBETWEEN","Maths","ALEA.ENTRE.BORNES(min; max)","Nombre entier aléatoire entre deux bornes.","=ALEA.ENTRE.BORNES(1; 100)","aléatoire entier hasard tirage dé"],
+  ["TABLEAU.ALEA","RANDARRAY","Maths","TABLEAU.ALEA([lignes]; [colonnes]; [min]; [max]; [entier])","Génère un tableau de nombres aléatoires (Excel 365).","=TABLEAU.ALEA(5; 3; 1; 100; VRAI)","aléatoire tableau hasard 365"],
+  ["SOMME.CARRES","SUMSQ","Maths","SOMME.CARRES(nombre1; ...)","Somme des carrés des valeurs.","=SOMME.CARRES(A1:A5)","carrés somme écart"],
+
+  ["MOYENNE","AVERAGE","Stats","MOYENNE(nombre1; [nombre2]; ...)","Moyenne arithmétique des valeurs.","=MOYENNE(A1:A20)","moyenne average"],
+  ["MOYENNE.SI","AVERAGEIF","Stats","MOYENNE.SI(plage; critère; [moyenne_plage])","Moyenne des cellules remplissant un critère.","=MOYENNE.SI(A1:A20; \">10\")","moyenne condition critère"],
+  ["MOYENNE.SI.ENS","AVERAGEIFS","Stats","MOYENNE.SI.ENS(moyenne_plage; plage_crit1; crit1; ...)","Moyenne avec plusieurs critères.","=MOYENNE.SI.ENS(C2:C100; A2:A100; \"Nord\")","moyenne multiple critères"],
+  ["NB","COUNT","Stats","NB(valeur1; [valeur2]; ...)","Compte les cellules contenant des nombres.","=NB(A1:A20)","compter nombres count"],
+  ["NBVAL","COUNTA","Stats","NBVAL(valeur1; [valeur2]; ...)","Compte les cellules non vides.","=NBVAL(A1:A20)","compter non vides remplies counta"],
+  ["NB.VIDE","COUNTBLANK","Stats","NB.VIDE(plage)","Compte les cellules vides.","=NB.VIDE(A1:A20)","compter vides manquantes"],
+  ["NB.SI","COUNTIF","Stats","NB.SI(plage; critère)","Compte les cellules qui remplissent un critère.","=NB.SI(A1:A20; \"Oui\")","compter condition critère occurrences nombre"],
+  ["NB.SI.ENS","COUNTIFS","Stats","NB.SI.ENS(plage_crit1; crit1; [plage_crit2; crit2]; ...)","Compte avec plusieurs critères.","=NB.SI.ENS(A2:A100; \"Nord\"; B2:B100; \">100\")","compter multiple critères conditions"],
+  ["MAX","MAX","Stats","MAX(nombre1; [nombre2]; ...)","Valeur la plus grande.","=MAX(A1:A30)","maximum plus grand haut"],
+  ["MIN","MIN","Stats","MIN(nombre1; [nombre2]; ...)","Valeur la plus petite.","=MIN(A1:A30)","minimum plus petit bas"],
+  ["MAX.SI.ENS","MAXIFS","Stats","MAX.SI.ENS(max_plage; plage_crit1; crit1; ...)","Maximum selon des critères.","=MAX.SI.ENS(C2:C100; A2:A100; \"Nord\")","maximum condition critère"],
+  ["MIN.SI.ENS","MINIFS","Stats","MIN.SI.ENS(min_plage; plage_crit1; crit1; ...)","Minimum selon des critères.","=MIN.SI.ENS(C2:C100; A2:A100; \"Nord\")","minimum condition critère"],
+  ["GRANDE.VALEUR","LARGE","Stats","GRANDE.VALEUR(tableau; k)","k-ième plus grande valeur (2e, 3e… du classement).","=GRANDE.VALEUR(A1:A30; 2)","top classement plus grand deuxième"],
+  ["PETITE.VALEUR","SMALL","Stats","PETITE.VALEUR(tableau; k)","k-ième plus petite valeur.","=PETITE.VALEUR(A1:A30; 2)","petite valeur classement minimum"],
+  ["RANG","RANK","Stats","RANG(nombre; référence; [ordre])","Position d'une valeur dans une liste (ordre 0 = décroissant).","=RANG(B2; B$2:B$100)","classement rang position top"],
+  ["MEDIANE","MEDIAN","Stats","MEDIANE(nombre1; [nombre2]; ...)","Valeur médiane (au milieu de la série).","=MEDIANE(A1:A30)","médiane milieu"],
+  ["MODE.SIMPLE","MODE.SNGL","Stats","MODE.SIMPLE(nombre1; ...)","Valeur la plus fréquente.","=MODE.SIMPLE(A1:A30)","mode fréquent plus fréquent"],
+  ["ECARTYPE.STANDARD","STDEV.S","Stats","ECARTYPE.STANDARD(nombre1; ...)","Écart-type d'un échantillon (dispersion).","=ECARTYPE.STANDARD(A1:A30)","écart type dispersion variance"],
+  ["VAR.STANDARD","VAR.S","Stats","VAR.STANDARD(nombre1; ...)","Variance d'un échantillon.","=VAR.STANDARD(A1:A30)","variance dispersion"],
+  ["FREQUENCE","FREQUENCY","Stats","FREQUENCE(données; intervalles)","Compte les valeurs par tranches (formule matricielle).","=FREQUENCE(A1:A100; {10;20;50})","fréquence tranches distribution histogramme"],
+
+  ["SI","IF","Logique","SI(test; valeur_si_vrai; valeur_si_faux)","Renvoie une valeur selon un test logique.","=SI(A1>=10; \"Admis\"; \"Recalé\")","condition test si alors sinon if"],
+  ["SI.CONDITIONS","IFS","Logique","SI.CONDITIONS(test1; valeur1; test2; valeur2; ...)","Plusieurs conditions à la suite (remplace les SI imbriqués).","=SI.CONDITIONS(A1>=16; \"A\"; A1>=10; \"B\"; VRAI; \"C\")","conditions multiples si imbriqué notes"],
+  ["SI.MULTIPLE","SWITCH","Logique","SI.MULTIPLE(expression; val1; rés1; val2; rés2; ...; [défaut])","Compare une valeur à une liste de cas.","=SI.MULTIPLE(A1; 1; \"Lundi\"; 2; \"Mardi\"; \"Autre\")","switch cas multiple comparer"],
+  ["ET","AND","Logique","ET(valeur_logique1; [valeur_logique2]; ...)","VRAI si toutes les conditions sont vraies.","=ET(A1>0; A1<100)","et toutes conditions and"],
+  ["OU","OR","Logique","OU(valeur_logique1; [valeur_logique2]; ...)","VRAI si au moins une condition est vraie.","=OU(A1=\"Nord\"; A1=\"Sud\")","ou au moins une condition or"],
+  ["NON","NOT","Logique","NON(valeur_logique)","Inverse VRAI/FAUX.","=NON(A1>10)","non inverse contraire not"],
+  ["XOR","XOR","Logique","XOR(valeur_logique1; ...)","VRAI si un nombre impair de conditions est vrai.","=XOR(A1>0; B1>0)","ou exclusif xor"],
+  ["SIERREUR","IFERROR","Logique","SIERREUR(valeur; valeur_si_erreur)","Remplace une erreur (#DIV/0!, #N/A…) par une valeur.","=SIERREUR(A1/B1; 0)","erreur gestion div0 na"],
+  ["SI.NON.DISPONIBLE","IFNA","Logique","SI.NON.DISPONIBLE(valeur; valeur_si_na)","Attrape uniquement l'erreur #N/A.","=SI.NON.DISPONIBLE(RECHERCHEV(A1; B:C; 2; FAUX); \"Introuvable\")","na introuvable recherchev erreur"],
+  ["VRAI","TRUE","Logique","VRAI()","Valeur logique VRAI.","=VRAI()","vrai true"],
+  ["FAUX","FALSE","Logique","FAUX()","Valeur logique FAUX.","=FAUX()","faux false"],
+
+  ["RECHERCHEV","VLOOKUP","Recherche","RECHERCHEV(valeur; table; no_colonne; [valeur_proche])","Cherche une valeur dans la 1re colonne et renvoie une valeur d'une autre colonne (FAUX = exact).","=RECHERCHEV(\"Dupont\"; A2:C100; 3; FAUX)","recherche verticale lookup chercher table correspondance"],
+  ["RECHERCHEH","HLOOKUP","Recherche","RECHERCHEH(valeur; table; no_ligne; [valeur_proche])","Comme RECHERCHEV mais sur une ligne horizontale.","=RECHERCHEH(\"Mars\"; A1:M2; 2; FAUX)","recherche horizontale ligne"],
+  ["RECHERCHEX","XLOOKUP","Recherche","RECHERCHEX(valeur; tableau_recherche; tableau_renvoi; [si_introuvable])","Recherche moderne dans toutes les directions, avec valeur par défaut (Excel 365).","=RECHERCHEX(\"Dupont\"; A2:A100; C2:C100; \"Inconnu\")","recherche x moderne flexible 365 chercher"],
+  ["INDEX","INDEX","Recherche","INDEX(tableau; no_ligne; [no_colonne])","Renvoie la valeur située à une position donnée.","=INDEX(C2:C100; 5)","index position récupérer valeur"],
+  ["EQUIV","MATCH","Recherche","EQUIV(valeur; tableau; [type])","Renvoie la position d'une valeur (0 = exact).","=EQUIV(\"Dupont\"; A2:A100; 0)","match position équivalent chercher"],
+  ["EQUIVX","XMATCH","Recherche","EQUIVX(valeur; tableau; [mode])","Version moderne d'EQUIV avec recherche inverse possible (365).","=EQUIVX(\"Dupont\"; A2:A100)","xmatch position moderne 365"],
+  ["DECALER","OFFSET","Recherche","DECALER(réf; lignes; colonnes; [hauteur]; [largeur])","Renvoie une plage décalée par rapport à une cellule.","=SOMME(DECALER(A1; 0; 0; 5; 1))","offset décaler plage dynamique"],
+  ["INDIRECT","INDIRECT","Recherche","INDIRECT(texte_réf; [a1])","Convertit un texte en référence de cellule.","=INDIRECT(\"A\" & B1)","indirect référence texte dynamique feuille"],
+  ["ADRESSE","ADDRESS","Recherche","ADRESSE(no_ligne; no_colonne)","Renvoie l'adresse d'une cellule sous forme de texte.","=ADRESSE(5; 3) → $C$5","adresse cellule référence texte"],
+  ["LIGNE","ROW","Recherche","LIGNE([réf])","Numéro de ligne d'une référence.","=LIGNE(A5) → 5","ligne numéro row numérotation"],
+  ["COLONNE","COLUMN","Recherche","COLONNE([réf])","Numéro de colonne d'une référence.","=COLONNE(C5) → 3","colonne numéro column"],
+  ["LIGNES","ROWS","Recherche","LIGNES(tableau)","Nombre de lignes d'une plage.","=LIGNES(A1:A10) → 10","lignes nombre hauteur"],
+  ["COLONNES","COLUMNS","Recherche","COLONNES(tableau)","Nombre de colonnes d'une plage.","=COLONNES(A1:C1) → 3","colonnes nombre largeur"],
+  ["RECHERCHE","LOOKUP","Recherche","RECHERCHE(valeur; vecteur_recherche; [vecteur_résultat])","Recherche simplifiée (ancienne fonction).","=RECHERCHE(85; A1:A10; B1:B10)","recherche lookup ancienne"],
+  ["CHOISIR","CHOOSE","Recherche","CHOISIR(no_index; valeur1; valeur2; ...)","Renvoie la n-ième valeur d'une liste.","=CHOISIR(2; \"Rouge\"; \"Vert\"; \"Bleu\") → Vert","choisir liste index option"],
+  ["LIEN_HYPERTEXTE","HYPERLINK","Recherche","LIEN_HYPERTEXTE(lien; [nom_convivial])","Crée un lien cliquable.","=LIEN_HYPERTEXTE(\"https://example.com\"; \"Site\")","lien hyperlink url cliquable"],
+  ["TRANSPOSE","TRANSPOSE","Recherche","TRANSPOSE(tableau)","Fait pivoter lignes et colonnes.","=TRANSPOSE(A1:C3)","transposer pivoter lignes colonnes"],
+
+  ["GAUCHE","LEFT","Texte","GAUCHE(texte; [nb_caractères])","Extrait les premiers caractères d'un texte.","=GAUCHE(\"Excel\"; 2) → Ex","extraire début gauche texte left"],
+  ["DROITE","RIGHT","Texte","DROITE(texte; [nb_caractères])","Extrait les derniers caractères d'un texte.","=DROITE(\"2024-03\"; 2) → 03","extraire fin droite texte right"],
+  ["STXT","MID","Texte","STXT(texte; no_départ; nb_caractères)","Extrait une partie du texte à partir d'une position.","=STXT(\"2024-03-15\"; 6; 2) → 03","extraire milieu sous-chaîne mid"],
+  ["NBCAR","LEN","Texte","NBCAR(texte)","Nombre de caractères d'un texte.","=NBCAR(\"Bonjour\") → 7","longueur caractères compter len"],
+  ["CONCAT","CONCAT","Texte","CONCAT(texte1; [texte2]; ...)","Joint plusieurs textes (accepte des plages).","=CONCAT(A1:A3)","concaténer joindre fusionner texte"],
+  ["CONCATENER","CONCATENATE","Texte","CONCATENER(texte1; texte2; ...)","Joint des textes (ancienne version de CONCAT).","=CONCATENER(A1; \" \"; B1)","concaténer ancienne joindre"],
+  ["JOINDRE.TEXTE","TEXTJOIN","Texte","JOINDRE.TEXTE(séparateur; ignorer_vides; texte1; ...)","Joint des textes avec un séparateur.","=JOINDRE.TEXTE(\", \"; VRAI; A1:A10)","joindre fusionner liste séparateur textjoin virgule"],
+  ["MAJUSCULE","UPPER","Texte","MAJUSCULE(texte)","Convertit en majuscules.","=MAJUSCULE(\"excel\") → EXCEL","majuscule capital upper"],
+  ["MINUSCULE","LOWER","Texte","MINUSCULE(texte)","Convertit en minuscules.","=MINUSCULE(\"EXCEL\") → excel","minuscule lower"],
+  ["NOMPROPER","PROPER","Texte","NOMPROPER(texte)","1re lettre de chaque mot en majuscule.","=NOMPROPER(\"jean dupont\") → Jean Dupont","nom propre majuscule capitaliser"],
+  ["SUBSTITUE","SUBSTITUTE","Texte","SUBSTITUE(texte; ancien_texte; nouveau_texte; [no_instance])","Remplace un texte par un autre (par contenu).","=SUBSTITUE(A1; \" \"; \"-\")","remplacer substituer texte"],
+  ["REMPLACER","REPLACE","Texte","REMPLACER(ancien_texte; no_départ; nb_caractères; nouveau_texte)","Remplace une partie du texte par position.","=REMPLACER(\"ABCDEF\"; 1; 3; \"XY\") → XYDEF","remplacer position replace"],
+  ["TROUVE","FIND","Texte","TROUVE(texte_cherché; texte; [no_départ])","Position d'un texte (sensible à la casse).","=TROUVE(\"@\"; A1)","trouver position chercher caractère find"],
+  ["CHERCHE","SEARCH","Texte","CHERCHE(texte_cherché; texte; [no_départ])","Position d'un texte (insensible à la casse, jokers * ?).","=CHERCHE(\"a\"; \"Banane\") → 2","chercher position recherche search"],
+  ["SUPPRESPACE","TRIM","Texte","SUPPRESPACE(texte)","Supprime les espaces en trop (début, fin, doublons).","=SUPPRESPACE(\"  Bonjour   toi \")","espaces nettoyer trim supprimer"],
+  ["EPURAGE","CLEAN","Texte","EPURAGE(texte)","Supprime les caractères non imprimables.","=EPURAGE(A1)","nettoyer caractères invisibles"],
+  ["TEXTE","TEXT","Texte","TEXTE(valeur; format_texte)","Convertit un nombre ou une date en texte formaté.","=TEXTE(A1; \"jj/mm/aaaa\")","format convertir texte date nombre monnaie"],
+  ["VALEURNOMBRE","VALUE","Texte","VALEURNOMBRE(texte)","Convertit un texte en nombre.","=VALEURNOMBRE(\"15,5\") → 15,5","convertir nombre valeur texte"],
+  ["CTXT","FIXED","Texte","CTXT(nombre; [décimales]; [sans_separateur])","Arrondit un nombre et le convertit en texte.","=CTXT(1234,567; 2)","texte nombre décimales"],
+  ["EXACT","EXACT","Texte","EXACT(texte1; texte2)","Compare deux textes (sensible à la casse).","=EXACT(A1; B1)","comparer exact identique"],
+  ["REPT","REPT","Texte","REPT(texte; nombre_fois)","Répète un texte n fois.","=REPT(\"★\"; 5)","répéter étoiles barre"],
+  ["CAR","CHAR","Texte","CAR(nombre)","Caractère correspondant au code (10 = saut de ligne).","=CAR(10)","caractère code saut ligne"],
+  ["CODE","CODE","Texte","CODE(texte)","Code du premier caractère.","=CODE(\"A\") → 65","code caractère ascii"],
+  ["FRACTIONNER.TEXTE","TEXTSPLIT","Texte","FRACTIONNER.TEXTE(texte; séparateur_col; [séparateur_ligne])","Découpe un texte en plusieurs cellules (Excel 365).","=FRACTIONNER.TEXTE(A1; \";\")","séparer découper split fractionner 365"],
+  ["TEXTE.AVANT","TEXTBEFORE","Texte","TEXTE.AVANT(texte; délimiteur; [no_instance])","Extrait le texte avant un délimiteur (365).","=TEXTE.AVANT(A1; \"@\")","avant extraire délimiteur 365"],
+  ["TEXTE.APRES","TEXTAFTER","Texte","TEXTE.APRES(texte; délimiteur; [no_instance])","Extrait le texte après un délimiteur (365).","=TEXTE.APRES(A1; \"@\")","après extraire délimiteur 365"],
+
+  ["AUJOURDHUI","TODAY","Date & heure","AUJOURDHUI()","Date du jour (recalculée automatiquement).","=AUJOURDHUI()","date jour aujourd'hui today"],
+  ["MAINTENANT","NOW","Date & heure","MAINTENANT()","Date et heure actuelles.","=MAINTENANT()","maintenant heure date now"],
+  ["DATE","DATE","Date & heure","DATE(année; mois; jour)","Construit une date à partir de 3 nombres.","=DATE(2024; 3; 15)","construire date créer"],
+  ["ANNEE","YEAR","Date & heure","ANNEE(date)","Extrait l'année d'une date.","=ANNEE(A1)","année extraire year"],
+  ["MOIS","MONTH","Date & heure","MOIS(date)","Extrait le mois (1-12).","=MOIS(A1)","mois extraire month"],
+  ["JOUR","DAY","Date & heure","JOUR(date)","Extrait le jour du mois.","=JOUR(A1)","jour extraire day"],
+  ["JOURSEM","WEEKDAY","Date & heure","JOURSEM(date; [type])","Jour de la semaine (type 2 : lundi = 1).","=JOURSEM(A1; 2)","jour semaine weekday lundi dimanche"],
+  ["NO.SEMAINE","WEEKNUM","Date & heure","NO.SEMAINE(date; [type])","Numéro de la semaine dans l'année.","=NO.SEMAINE(A1; 2)","semaine numéro week"],
+  ["NO.SEMAINE.ISO","ISOWEEKNUM","Date & heure","NO.SEMAINE.ISO(date)","Numéro de semaine ISO 8601 (commençant lundi).","=NO.SEMAINE.ISO(A1)","semaine iso numéro"],
+  ["DATEDIF","DATEDIF","Date & heure","DATEDIF(date_début; date_fin; unité)","Différence entre deux dates (\"y\" années, \"m\" mois, \"d\" jours).","=DATEDIF(A1; AUJOURDHUI(); \"y\")","différence âge ancienneté entre dates durée"],
+  ["NB.JOURS","DAYS","Date & heure","NB.JOURS(date_fin; date_début)","Nombre de jours entre deux dates.","=NB.JOURS(B1; A1)","jours différence nombre"],
+  ["NB.JOURS.OUVRES","NETWORKDAYS","Date & heure","NB.JOURS.OUVRES(début; fin; [jours_fériés])","Nombre de jours ouvrés (lun-ven) entre deux dates.","=NB.JOURS.OUVRES(A1; B1; F1:F10)","jours ouvrés travail fériés business"],
+  ["NB.JOURS.OUVRES.INTL","NETWORKDAYS.INTL","Date & heure","NB.JOURS.OUVRES.INTL(début; fin; [weekend]; [fériés])","Jours ouvrés avec weekend personnalisé.","=NB.JOURS.OUVRES.INTL(A1; B1; 2)","jours ouvrés weekend personnalisé"],
+  ["SERIE.JOUR.OUVRE","WORKDAY","Date & heure","SERIE.JOUR.OUVRE(date; jours; [fériés])","Date après n jours ouvrés (délai de livraison).","=SERIE.JOUR.OUVRE(A1; 10)","jour ouvré délai livraison échéance"],
+  ["MOIS.DECALER","EDATE","Date & heure","MOIS.DECALER(date; mois)","Décale une date de n mois (échéances).","=MOIS.DECALER(A1; 6)","décaler mois échéance édate"],
+  ["FIN.MOIS","EOMONTH","Date & heure","FIN.MOIS(date; mois)","Dernier jour du mois (décalé de n mois).","=FIN.MOIS(A1; 0)","fin mois dernier jour échéance"],
+  ["HEURE","HOUR","Date & heure","HEURE(heure)","Extrait l'heure (0-23).","=HEURE(A1)","heure extraire hour"],
+  ["MINUTE","MINUTE","Date & heure","MINUTE(heure)","Extrait les minutes.","=MINUTE(A1)","minute extraire"],
+  ["SECONDE","SECOND","Date & heure","SECONDE(heure)","Extrait les secondes.","=SECONDE(A1)","seconde extraire"],
+  ["TEMPS","TIME","Date & heure","TEMPS(heure; minute; seconde)","Construit une heure.","=TEMPS(14; 30; 0)","construire heure créer"],
+  ["DATEVAL","DATEVALUE","Date & heure","DATEVAL(texte_date)","Convertit une date en texte en vraie date.","=DATEVAL(\"15/03/2024\")","convertir date texte"],
+
+  ["VPM","PMT","Finance","VPM(taux; npm; va; [vc]; [type])","Mensualité d'un prêt ou d'un emprunt.","=VPM(3,5%/12; 240; 200000)","prêt crédit mensualité emprunt vpm remboursement"],
+  ["INTPER","IPMT","Finance","INTPER(taux; période; npm; va)","Partie d'intérêts d'un paiement donné.","=INTPER(3,5%/12; 1; 240; 200000)","intérêt prêt paiement"],
+  ["PRINCPER","PPMT","Finance","PRINCPER(taux; période; npm; va)","Partie de capital remboursé d'un paiement donné.","=PRINCPER(3,5%/12; 1; 240; 200000)","capital amortissement principal prêt"],
+  ["VA","PV","Finance","VA(taux; npm; vpm; [vc]; [type])","Valeur actuelle d'un investissement.","=VA(4%; 10; -1000)","valeur actuelle actualisation présente"],
+  ["VC","FV","Finance","VC(taux; npm; vpm; [va]; [type])","Valeur future d'un placement (épargne).","=VC(4%; 10; -1000; -5000)","valeur future épargne capitalisation placement"],
+  ["TAUX","RATE","Finance","TAUX(npm; vpm; va)","Taux d'intérêt par période d'un prêt.","=TAUX(240; -1100; 200000)*12","taux intérêt rate crédit"],
+  ["NPM","NPER","Finance","NPM(taux; vpm; va)","Nombre de périodes de remboursement.","=NPM(4%/12; -500; 20000)","durée périodes remboursement nombre"],
+  ["VAN","NPV","Finance","VAN(taux; valeurs)","Valeur actuelle nette d'une série de flux.","=VAN(8%; B2:B7)","van npv investissement flux rentabilité"],
+  ["TRI","IRR","Finance","TRI(valeurs; [estimation])","Taux de rentabilité interne.","=TRI(B1:B7)","tri irr rentabilité investissement"],
+  ["VAN.PAIEMENTS","XNPV","Finance","VAN.PAIEMENTS(taux; valeurs; dates)","VAN avec des dates irrégulières.","=VAN.PAIEMENTS(8%; B2:B7; A2:A7)","van dates irrégulières"],
+  ["TRI.PAIEMENTS","XIRR","Finance","TRI.PAIEMENTS(valeurs; dates)","TRI avec des dates irrégulières.","=TRI.PAIEMENTS(B2:B7; A2:A7)","tri dates irrégulières rentabilité"],
+  ["AMORLIN","SLN","Finance","AMORLIN(coût; valeur_résiduelle; durée)","Amortissement linéaire par période.","=AMORLIN(10000; 1000; 5)","amortissement linéaire comptabilité"],
+  ["AMORDEGR","DDB","Finance","AMORDEGR(coût; valeur_res; durée; période; [facteur])","Amortissement dégressif à taux double.","=AMORDEGR(10000; 1000; 5; 1)","amortissement dégressif"],
+  ["CUMUL.INTER","CUMIPMT","Finance","CUMUL.INTER(taux; npm; va; début; fin; type)","Intérêts cumulés entre deux périodes d'un prêt.","=CUMUL.INTER(3,5%/12; 240; 200000; 1; 12; 0)","intérêts cumulés prêt total"],
+
+  ["ESTNUM","ISNUMBER","Info","ESTNUM(valeur)","VRAI si la valeur est un nombre.","=ESTNUM(A1)","est nombre test type"],
+  ["ESTTEXTE","ISTEXT","Info","ESTTEXTE(valeur)","VRAI si la valeur est du texte.","=ESTTEXTE(A1)","est texte test type"],
+  ["ESTVIDE","ISBLANK","Info","ESTVIDE(valeur)","VRAI si la cellule est vide.","=ESTVIDE(A1)","est vide test blank"],
+  ["ESTERREUR","ISERROR","Info","ESTERREUR(valeur)","VRAI si la valeur est une erreur.","=ESTERREUR(A1)","est erreur test error"],
+  ["ESTNA","ISNA","Info","ESTNA(valeur)","VRAI si la valeur est l'erreur #N/A.","=ESTNA(A1)","est na erreur"],
+  ["EST.PAIR","ISEVEN","Info","EST.PAIR(nombre)","VRAI si le nombre est pair.","=EST.PAIR(A1)","pair même"],
+  ["EST.IMPAIR","ISODD","Info","EST.IMPAIR(nombre)","VRAI si le nombre est impair.","=EST.IMPAIR(A1)","impair odd"],
+  ["ESTFORMULE","ISFORMULA","Info","ESTFORMULE(référence)","VRAI si la cellule contient une formule.","=ESTFORMULE(A1)","est formule test"],
+  ["NA","NA","Info","NA()","Renvoie l'erreur #N/A volontairement.","=NA()","na erreur"],
+  ["TYPE","TYPE","Info","TYPE(valeur)","Type de valeur (1 nombre, 2 texte, 4 logique, 16 erreur).","=TYPE(A1)","type valeur"],
+
+  ["FILTRE","FILTER","Tableaux 365","FILTRE(tableau; inclure; [si_vide])","Extrait les lignes qui remplissent une condition (tableau dynamique).","=FILTRE(A2:C100; B2:B100=\"Nord\")","filtrer extraire tableau dynamique 365 condition"],
+  ["UNIQUE","UNIQUE","Tableaux 365","UNIQUE(tableau; [par_colonne]; [une_seule_fois])","Extrait les valeurs sans doublons (365).","=UNIQUE(A2:A100)","unique doublons distinct sans doublon 365"],
+  ["TRI","SORT","Tableaux 365","TRI(tableau; [index_tri]; [ordre]; [par_colonne])","Trie un tableau dynamiquement (1 = croissant).","=TRI(A2:C100; 2; -1)","trier sort ordre tableau 365"],
+  ["TRIERPAR","SORTBY","Tableaux 365","TRIERPAR(tableau; par_tableau1; [ordre1]; ...)","Trie selon une autre plage (365).","=TRIERPAR(A2:A100; B2:B100; -1)","trier selon autre colonne 365"],
+  ["SEQUENCE","SEQUENCE","Tableaux 365","SEQUENCE(lignes; [colonnes]; [début]; [pas])","Génère une suite de nombres (365).","=SEQUENCE(10; 1; 1; 1)","séquence numérotation suite 365 générer"],
+  ["PRENDRE","TAKE","Tableaux 365","PRENDRE(tableau; lignes; [colonnes])","Prend les n premières lignes/colonnes (top 10).","=PRENDRE(TRI(A2:C100; 2; -1); 10)","prendre top n premières 365"],
+  ["REJETER","DROP","Tableaux 365","REJETER(tableau; lignes; [colonnes])","Supprime les n premières lignes/colonnes (365).","=REJETER(A2:C100; 1)","rejeter supprimer premières lignes 365"],
+  ["ASSEMB.V","VSTACK","Tableaux 365","ASSEMB.V(tableau1; tableau2; ...)","Empile des tableaux verticalement (365).","=ASSEMB.V(Tabl1; Tabl2)","empiler vertical combiner 365"],
+  ["ASSEMB.H","HSTACK","Tableaux 365","ASSEMB.H(tableau1; tableau2; ...)","Empile des tableaux horizontalement (365).","=ASSEMB.H(A1:A5; C1:C5)","empiler horizontal combiner 365"],
+  ["LET","LET","Tableaux 365","LET(nom1; valeur1; [nom2; valeur2; ...]; calcul)","Nomme des calculs intermédiaires pour alléger une formule (365).","=LET(x; A1*2; y; A2*3; x+y)","let variable intermédiaire nommer 365"],
+  ["LAMBDA","LAMBDA","Tableaux 365","LAMBDA(param1; [param2; ...]; calcul)","Crée une fonction personnalisée réutilisable (365).","=LAMBDA(x; x^2)(5)","lambda fonction personnalisée créer 365"],
+
+  ["CONVERT","CONVERT","Ingénierie","CONVERT(nombre; unité_départ; unité_arrivée)","Convertit des unités (km, kg, °C…).","=CONVERT(100; \"km\"; \"mi\")","convertir unités mesure"],
+  ["BINDEC","BIN2DEC","Ingénierie","BINDEC(nombre_binaire)","Convertit du binaire en décimal.","=BINDEC(1010) → 10","binaire décimal convertir"],
+  ["DECBIN","DEC2BIN","Ingénierie","DECBIN(nombre; [caractères])","Convertit du décimal en binaire.","=DECBIN(10) → 1010","décimal binaire convertir"],
+  ["HEXDEC","HEX2DEC","Ingénierie","HEXDEC(nombre_hexa)","Convertit de l'hexadécimal en décimal.","=HEXDEC(\"FF\") → 255","hexadécimal décimal convertir"],
+  ["DECHEX","DEC2HEX","Ingénierie","DECHEX(nombre; [caractères])","Convertit du décimal en hexadécimal.","=DECHEX(255) → FF","décimal hexadécimal convertir"],
+
+  ["INDEX + EQUIV","INDEX + MATCH","Combinaisons","INDEX(colonne_résultat; EQUIV(valeur; colonne_recherche; 0))","Alternative à RECHERCHEV, plus souple : cherche dans n'importe quelle direction.","=INDEX(C2:C100; EQUIV(\"Dupont\"; A2:A100; 0))","recherchev équivalent recherche gauche flexible combiné"],
+  ["SI + NB.SI (doublons)","IF + COUNTIF","Combinaisons","SI(NB.SI(plage; valeur)>1; \"Doublon\"; \"Unique\")","Détecte les doublons d'une liste.","=SI(NB.SI(A:A; A2)>1; \"Doublon\"; \"Unique\")","doublon détecter répétition combinaison"],
+  ["SOMME.SI.ENS par mois","SUMIFS + DATE","Combinaisons","SOMME.SI.ENS(montants; dates; \">=\"&DATE(2024;1;1); dates; \"<\"&DATE(2024;2;1))","Additionne les montants d'un mois précis.","=SOMME.SI.ENS(B:B; A:A; \">=\"&DATE(2024;1;1); A:A; \"<\"&DATE(2024;2;1))","somme mois période date cumul mensuel"],
+  ["TEXTE + AUJOURDHUI","TEXT + TODAY","Combinaisons","\"Dossier du \" & TEXTE(AUJOURDHUI(); \"jj/mm/aaaa\")","Insère la date du jour dans un texte.","=\"Dossier du \" & TEXTE(AUJOURDHUI(); \"jj/mm/aaaa\")","texte date concaténer jour libellé"],
+];
+
+const CAT_ICONS = {
+  "Maths": "➗", "Stats": "📊", "Logique": "🔀", "Recherche": "🔎",
+  "Texte": "🔤", "Date & heure": "📅", "Finance": "💰", "Info": "ℹ️",
+  "Tableaux 365": "🧩", "Ingénierie": "⚙️", "Combinaisons": "🧠"
+};
+
+/* ================= ÉTAT ================= */
+let activeCat = "Toutes";
+let syntaxLang = "FR";
+let query = "";
+
+/* ================= OUTILS ================= */
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function toEnSyntax(formula, enName) {
+  return formula.replace(/^=?[A-Z0-9.\u00C0-\u017F]+/, enName).replace(/;/g, ",");
+}
+
+function formulaMatches(f, q) {
+  if (!q) return true;
+  const hay = norm(f[0] + " " + f[1] + " " + f[2] + " " + f[3] + " " + f[4] + " " + f[6]);
+  return q.split(/\s+/).every(w => hay.includes(w));
+}
+
+/* ================= RENDU RECHERCHE ================= */
+function renderChips() {
+  const cats = ["Toutes", ...new Set(DB.map(f => f[2]))];
+  const el = document.getElementById("chips");
+  el.innerHTML = "";
+  cats.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "chip" + (c === activeCat ? " active" : "");
+    const n = c === "Toutes" ? DB.length : DB.filter(f => f[2] === c).length;
+    b.textContent = (CAT_ICONS[c] || "") + " " + c + " (" + n + ")";
+    b.onclick = () => { activeCat = c; renderChips(); renderCards(); };
+    el.appendChild(b);
+  });
+}
+
+function renderCards() {
+  const q = norm(query.trim());
+  const list = DB.filter(f =>
+    (activeCat === "Toutes" || f[2] === activeCat) && formulaMatches(f, q)
+  );
+  document.getElementById("count").textContent =
+    list.length + " formule" + (list.length > 1 ? "s" : "") + " trouvée" + (list.length > 1 ? "s" : "");
+  document.getElementById("empty").style.display = list.length ? "none" : "block";
+  const cards = document.getElementById("cards");
+  cards.innerHTML = "";
+  list.forEach(f => {
+    const fr = f[0], en = f[1], cat = f[2], syntax = f[3], desc = f[4], ex = f[5];
+    const card = document.createElement("div");
+    card.className = "card";
+    const shownSyntax = syntaxLang === "FR" ? syntax : toEnSyntax(syntax, en);
+    const shownEx = syntaxLang === "FR" ? ex : toEnSyntax(ex, en);
+    card.innerHTML =
+      '<div class="card-head"><div><div class="fname">' + fr + '</div>' +
+      '<div class="fname-en">' + en + '</div></div>' +
+      '<button class="copy-btn">📋 Copier</button></div>' +
+      '<div class="badges"><span class="badge cat">' + (CAT_ICONS[cat] || "") + " " + cat + '</span></div>' +
+      '<div class="desc">' + desc + '</div>' +
+      '<code>' + shownSyntax.replace(/</g, "&lt;") + '</code>' +
+      '<code class="ex">' + shownEx.replace(/</g, "&lt;") + '</code>';
+    const btn = card.querySelector(".copy-btn");
+    btn.onclick = () => {
+      navigator.clipboard.writeText(shownSyntax).then(() => {
+        btn.textContent = "✓ Copié !"; btn.classList.add("copied");
+        setTimeout(() => { btn.textContent = "📋 Copier"; btn.classList.remove("copied"); }, 1500);
+      });
+    };
+    cards.appendChild(card);
+  });
+}
+
+document.getElementById("searchInput").addEventListener("input", e => {
+  query = e.target.value; renderCards();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+    e.preventDefault(); showView("search"); document.getElementById("searchInput").focus();
+  }
+});
+document.getElementById("langToggle").onclick = function () {
+  syntaxLang = syntaxLang === "FR" ? "EN" : "FR";
+  this.textContent = "Syntaxe : " + syntaxLang;
+  this.classList.toggle("on", syntaxLang === "EN");
+  renderCards();
+};
+
+/* ================= NAVIGATION ================= */
+function showView(v) {
+  document.getElementById("viewSearch").classList.toggle("active", v === "search");
+  document.getElementById("viewAI").classList.toggle("active", v === "ai");
+  document.getElementById("tabSearch").classList.toggle("active", v === "search");
+  document.getElementById("tabAI").classList.toggle("active", v === "ai");
+}
+
+/* ================= ASSISTANT IA (Mistral) ================= */
+const chatLog = document.getElementById("chatLog");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendBtn");
+let history = [];
+
+const apiKeyInput = document.getElementById("apiKey");
+const modelSelect = document.getElementById("model");
+apiKeyInput.value = localStorage.getItem("mistral_api_key") || "";
+modelSelect.value = localStorage.getItem("mistral_model") || "mistral-large-latest";
+
+function saveKey() {
+  localStorage.setItem("mistral_api_key", apiKeyInput.value.trim());
+  localStorage.setItem("mistral_model", modelSelect.value);
+  addMsg("bot", "✅ Configuration enregistrée. Posez-moi votre question Excel !");
+}
+function clearChat() { history = []; chatLog.innerHTML = ""; }
+
+function addMsg(cls, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return d;
+}
+
+function buildSystemPrompt(userMsg) {
+  const q = norm(userMsg.trim());
+  const relevant = DB.filter(f => formulaMatches(f, q))
+    .slice(0, 6)
+    .map(f => "- " + f[0] + " / " + f[1] + " : " + f[4] + " Syntaxe : " + f[3])
+    .join("\n");
+  return "Tu es un expert Excel. Réponds toujours en français, de façon concise.\n" +
+    "Pour chaque formule que tu proposes :\n" +
+    "1. Donne la formule en version FRANÇAISE (arguments séparés par ;)\n" +
+    "2. Puis la version ANGLAISE (arguments séparés par ,)\n" +
+    "3. Un exemple concret court.\n" +
+    "Mets les formules sur leur propre ligne entre triple backticks.\n" +
+    "Si la demande n'est pas liée à Excel ou aux tableurs, redirige poliment vers Excel.\n\n" +
+    "Formules de la base de données potentiellement pertinentes :\n" + (relevant || "(aucune)");
+}
+
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  const key = (localStorage.getItem("mistral_api_key") || "").trim();
+  if (!key) {
+    addMsg("bot", "⚠️ Entrez d'abord votre clé API Mistral dans le panneau de configuration à gauche, puis cliquez sur « Enregistrer ». Obtenez une clé sur console.mistral.ai.");
+    return;
+  }
+  chatInput.value = "";
+  sendBtn.disabled = true;
+  addMsg("user", text);
+  const thinking = addMsg("bot typing", "⏳ Réflexion en cours…");
+  const model = localStorage.getItem("mistral_model") || "mistral-large-latest";
+  const sys = buildSystemPrompt(text);
+
+  try {
+    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+      body: JSON.stringify({
+        model: model,
+        messages: [...history, { role: "system", content: sys }, { role: "user", content: text }],
+        temperature: 0.3
+      })
+    });
+    if (!res.ok) {
+      let msg = "Erreur " + res.status;
+      if (res.status === 401) msg = "Clé API invalide ou expirée. Vérifiez votre clé sur console.mistral.ai.";
+      else if (res.status === 429) msg = "Limite de requêtes atteinte (quota). Réessayez dans un instant.";
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    const reply = data.choices[0].message.content;
+    thinking.remove();
+    history.push({ role: "user", content: text });
+    history.push({ role: "system", content: sys });
+    history.push({ role: "assistant", content: reply });
+    if (history.length > 12) history = history.slice(-12);
+    renderBotReply(reply);
+  } catch (err) {
+    thinking.remove();
+    const net = (err instanceof TypeError)
+      ? "\n\nSi l'erreur persiste, votre réseau ou le navigateur bloque l'appel à api.mistral.ai. La recherche de l'onglet « Formules » fonctionne toujours hors ligne."
+      : "";
+    addMsg("bot err", "❌ " + (err.message === "Failed to fetch" ? "Impossible de joindre api.mistral.ai (connexion ou clé ?)." : err.message) + net);
+  }
+  sendBtn.disabled = false;
+}
+
+function renderBotReply(text) {
+  const d = document.createElement("div");
+  d.className = "msg bot";
+  const parts = text.split(/```/);
+  parts.forEach((p, i) => {
+    if (i % 2 === 1) {
+      const code = document.createElement("code");
+      code.textContent = p.replace(/^[a-z]*\n?/, "").trim();
+      d.appendChild(code);
+      const btn = document.createElement("button");
+      btn.className = "copy-btn";
+      btn.textContent = "📋 Copier";
+      btn.style.marginTop = "6px";
+      btn.onclick = () => {
+        navigator.clipboard.writeText(code.textContent).then(() => {
+          btn.textContent = "✓ Copié !";
+          setTimeout(() => btn.textContent = "📋 Copier", 1500);
+        });
+      };
+      d.appendChild(btn);
+    } else {
+      const span = document.createElement("span");
+      span.textContent = p.trim();
+      d.appendChild(span);
+    }
+  });
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+/* ================= INIT ================= */
+renderChips();
+renderCards();
+addMsg("bot", "👋 Bonjour ! Décrivez ce que vous voulez faire dans Excel et je vous donnerai la formule (en français et en anglais).\n\nExemples :\n• « Je veux additionner les ventes du mois de janvier »\n• « Comment chercher un nom dans un tableau ? »\n• « Compter les cellules non vides »");
+</script>
+</body>
+</html>
