@@ -124,9 +124,9 @@
         <div>
           <label for="model">Modèle</label>
           <select id="model">
-            <option value="mistral-large-latest">mistral-large-latest (recommandé)</option>
-            <option value="mistral-small-latest">mistral-small-latest (rapide)</option>
-            <option value="open-mistral-nemo">open-mistral-nemo (économique)</option>
+            <option value="mistral-small-latest">mistral-small-latest (recommandé, plan gratuit)</option>
+            <option value="open-mistral-nemo">open-mistral-nemo (économique, plan gratuit)</option>
+            <option value="mistral-large-latest">mistral-large-latest (nécessite un plan payant)</option>
           </select>
         </div>
         <button class="btn" onclick="saveKey()">💾 Enregistrer</button>
@@ -435,7 +435,7 @@ let history = [];
 const apiKeyInput = document.getElementById("apiKey");
 const modelSelect = document.getElementById("model");
 apiKeyInput.value = localStorage.getItem("mistral_api_key") || "";
-modelSelect.value = localStorage.getItem("mistral_model") || "mistral-large-latest";
+modelSelect.value = localStorage.getItem("mistral_model") || "mistral-small-latest";
 
 function saveKey() {
   localStorage.setItem("mistral_api_key", apiKeyInput.value.trim());
@@ -481,7 +481,7 @@ async function sendMessage() {
   sendBtn.disabled = true;
   addMsg("user", text);
   const thinking = addMsg("bot typing", "⏳ Réflexion en cours…");
-  const model = localStorage.getItem("mistral_model") || "mistral-large-latest";
+  const model = localStorage.getItem("mistral_model") || "mistral-small-latest";
   const sys = buildSystemPrompt(text);
 
   try {
@@ -497,7 +497,7 @@ async function sendMessage() {
     if (!res.ok) {
       let msg = "Erreur " + res.status;
       if (res.status === 401) msg = "Clé API invalide ou expirée. Vérifiez votre clé sur console.mistral.ai.";
-      else if (res.status === 429) msg = "Limite de requêtes atteinte (quota). Réessayez dans un instant.";
+      else if (res.status === 429) msg = "Limite de requêtes atteinte. Si vous êtes sur le plan gratuit, vérifiez que le modèle choisi est « mistral-small-latest » (le modèle large nécessite un plan payant), patientez une minute puis réessayez.";
       throw new Error(msg);
     }
     const data = await res.json();
