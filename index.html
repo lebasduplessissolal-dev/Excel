@@ -133,6 +133,7 @@
         <div>
           <label for="model">Modèle</label>
           <select id="model"></select>
+          <button class="btn secondary" style="width:100%;margin-top:8px" onclick="refreshModels()">🔄 Charger les modèles disponibles</button>
         </div>
         <button class="btn" onclick="saveKey()">💾 Enregistrer</button>
         <button class="btn secondary" onclick="clearChat()">🗑️ Effacer la conversation</button>
@@ -443,6 +444,7 @@ let history = [];
 const PROVIDERS = {
   mistral: {
     url: "https://api.mistral.ai/v1/chat/completions",
+    modelsUrl: "https://api.mistral.ai/v1/models",
     name: "Mistral AI",
     signupHint: "console.mistral.ai",
     models: [
@@ -453,6 +455,7 @@ const PROVIDERS = {
   },
   groq: {
     url: "https://api.groq.com/openai/v1/chat/completions",
+    modelsUrl: "https://api.groq.com/openai/v1/models",
     name: "Groq",
     signupHint: "console.groq.com/keys",
     models: [
@@ -464,6 +467,7 @@ const PROVIDERS = {
   },
   openrouter: {
     url: "https://openrouter.ai/api/v1/chat/completions",
+    modelsUrl: "https://openrouter.ai/api/v1/models",
     name: "OpenRouter",
     signupHint: "openrouter.ai/keys",
     models: [
@@ -474,6 +478,7 @@ const PROVIDERS = {
   },
   gemini: {
     url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    modelsUrl: "https://generativelanguage.googleapis.com/v1beta/openai/models",
     name: "Google Gemini",
     signupHint: "aistudio.google.com/apikey",
     models: [
@@ -506,7 +511,41 @@ function refreshModelOptions() {
 function saveKey() {
   localStorage.setItem(providerSelect.value + "_api_key", apiKeyInput.value.trim());
   localStorage.setItem(providerSelect.value + "_model", modelSelect.value);
-  addMsg("bot", "✅ Configuration enregistrée (" + currentProvider().name + "). Posez-moi votre question Excel !");
+  addMsg("bot", "✅ Configuration enregistrée (" + currentProvider().name + "). Chargement des modèles disponibles…");
+  refreshModels();
+}
+
+const MODEL_EXCLUDE = /embed|tts|whisper|guard|moderation|ocr|speech|transcribe|rerank|vision|image|audio/i;
+
+async function refreshModels() {
+  const p = currentProvider();
+  const key = (localStorage.getItem(providerSelect.value + "_api_key") || "").trim();
+  if (!key) {
+    addMsg("bot", "⚠️ Entrez d'abord votre clé API " + p.name + " puis cliquez sur Enregistrer.");
+    return;
+  }
+  try {
+    const res = await fetch(p.modelsUrl, { headers: { "Authorization": "Bearer " + key } });
+    const data = await res.json();
+    if (!res.ok) {
+      const detail = (data && data.error && data.error.message) ? " — " + data.error.message : "";
+      throw new Error("Impossible de lister les modèles (" + res.status + ")" + detail);
+    }
+    let ids = (data.data || []).map(m => m.id).filter(id => !MODEL_EXCLUDE.test(id));
+    ids.sort((a, b) => a.localeCompare(b));
+    if (!ids.length) throw new Error("Aucun modèle de texte trouvé pour ce fournisseur.");
+    modelSelect.innerHTML = "";
+    ids.forEach(id => {
+      const o = document.createElement("option");
+      o.value = id; o.textContent = id;
+      modelSelect.appendChild(o);
+    });
+    const saved = localStorage.getItem(providerSelect.value + "_model");
+    modelSelect.value = (saved && ids.includes(saved)) ? saved : ids[0];
+    addMsg("bot", "📋 " + ids.length + " modèles disponibles chez " + p.name + ". Le modèle « " + modelSelect.value + " » est sélectionné — cliquez sur 💾 Enregistrer pour le mémoriser, puis posez votre question.");
+  } catch (err) {
+    addMsg("bot err", "❌ " + (err.message === "Failed to fetch" ? "Impossible de joindre " + p.name + " (connexion ou clé ?)." : err.message));
+  }
 }
 
 providerSelect.onchange = refreshModelOptions;
