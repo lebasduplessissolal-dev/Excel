@@ -118,23 +118,31 @@
       <aside class="settings">
         <h3>⚙️ Configuration Mistral AI</h3>
         <div>
-          <label for="apiKey">Clé API Mistral</label>
+          <label for="provider">Fournisseur IA</label>
+          <select id="provider">
+            <option value="mistral">Mistral AI — console.mistral.ai</option>
+            <option value="groq">Groq — console.groq.com (gratuit, rapide)</option>
+            <option value="openrouter">OpenRouter — openrouter.ai (modèles gratuits)</option>
+            <option value="gemini">Google Gemini — aistudio.google.com (gratuit)</option>
+          </select>
+        </div>
+        <div>
+          <label for="apiKey">Clé API</label>
           <input id="apiKey" type="password" placeholder="Votre clé API">
         </div>
         <div>
           <label for="model">Modèle</label>
-          <select id="model">
-            <option value="mistral-small-latest">mistral-small-latest (recommandé, plan gratuit)</option>
-            <option value="open-mistral-nemo">open-mistral-nemo (économique, plan gratuit)</option>
-            <option value="mistral-large-latest">mistral-large-latest (nécessite un plan payant)</option>
-          </select>
+          <select id="model"></select>
         </div>
         <button class="btn" onclick="saveKey()">💾 Enregistrer</button>
         <button class="btn secondary" onclick="clearChat()">🗑️ Effacer la conversation</button>
         <div class="hint">
-          Votre clé est stockée <b>uniquement dans ce navigateur</b> (localStorage) et n'est envoyée qu'à
-          api.mistral.ai. Obtenez une clé sur
-          <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a>.
+          Votre clé est stockée <b>uniquement dans ce navigateur</b> (localStorage) et n'est envoyée qu'au
+          fournisseur choisi. Clés gratuites :
+          <b>Mistral</b> <a href="https://console.mistral.ai" target="_blank" rel="noopener">console.mistral.ai</a> •
+          <b>Groq</b> <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com</a> •
+          <b>Gemini</b> <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com</a> •
+          <b>OpenRouter</b> <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai</a>
         </div>
       </aside>
       <div class="chat-panel">
@@ -432,16 +440,74 @@ const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 let history = [];
 
+const PROVIDERS = {
+  mistral: {
+    url: "https://api.mistral.ai/v1/chat/completions",
+    name: "Mistral AI",
+    signupHint: "console.mistral.ai",
+    models: [
+      ["mistral-small-latest", "mistral-small-latest (recommandé, gratuit)"],
+      ["open-mistral-nemo", "open-mistral-nemo (gratuit)"],
+      ["mistral-large-latest", "mistral-large-latest (plan payant)"]
+    ]
+  },
+  groq: {
+    url: "https://api.groq.com/openai/v1/chat/completions",
+    name: "Groq",
+    signupHint: "console.groq.com/keys",
+    models: [
+      ["llama-3.3-70b-versatile", "llama-3.3-70b-versatile (recommandé, gratuit)"],
+      ["llama-3.1-8b-instant", "llama-3.1-8b-instant (rapide, gratuit)"]
+    ]
+  },
+  openrouter: {
+    url: "https://openrouter.ai/api/v1/chat/completions",
+    name: "OpenRouter",
+    signupHint: "openrouter.ai/keys",
+    models: [
+      ["meta-llama/llama-3.3-70b-instruct:free", "llama-3.3-70b (gratuit)"],
+      ["google/gemini-2.0-flash-exp:free", "gemini-2.0-flash (gratuit)"],
+      ["deepseek/deepseek-chat-v3-0324:free", "deepseek-chat-v3 (gratuit)"]
+    ]
+  },
+  gemini: {
+    url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    name: "Google Gemini",
+    signupHint: "aistudio.google.com/apikey",
+    models: [
+      ["gemini-2.0-flash", "gemini-2.0-flash (recommandé, gratuit)"],
+      ["gemini-2.0-flash-lite", "gemini-2.0-flash-lite (gratuit)"]
+    ]
+  }
+};
+
+const providerSelect = document.getElementById("provider");
 const apiKeyInput = document.getElementById("apiKey");
 const modelSelect = document.getElementById("model");
-apiKeyInput.value = localStorage.getItem("mistral_api_key") || "";
-modelSelect.value = localStorage.getItem("mistral_model") || "mistral-small-latest";
+
+function currentProvider() { return PROVIDERS[providerSelect.value]; }
+
+function refreshModelOptions() {
+  const p = currentProvider();
+  modelSelect.innerHTML = "";
+  p.models.forEach(m => {
+    const o = document.createElement("option");
+    o.value = m[0]; o.textContent = m[1];
+    modelSelect.appendChild(o);
+  });
+  const saved = localStorage.getItem(providerSelect.value + "_model");
+  if (saved && [...modelSelect.options].some(o => o.value === saved)) modelSelect.value = saved;
+  apiKeyInput.value = localStorage.getItem(providerSelect.value + "_api_key") || "";
+}
 
 function saveKey() {
-  localStorage.setItem("mistral_api_key", apiKeyInput.value.trim());
-  localStorage.setItem("mistral_model", modelSelect.value);
-  addMsg("bot", "✅ Configuration enregistrée. Posez-moi votre question Excel !");
+  localStorage.setItem(providerSelect.value + "_api_key", apiKeyInput.value.trim());
+  localStorage.setItem(providerSelect.value + "_model", modelSelect.value);
+  addMsg("bot", "✅ Configuration enregistrée (" + currentProvider().name + "). Posez-moi votre question Excel !");
 }
+
+providerSelect.onchange = refreshModelOptions;
+refreshModelOptions();
 function clearChat() { history = []; chatLog.innerHTML = ""; }
 
 function addMsg(cls, text) {
@@ -472,20 +538,21 @@ function buildSystemPrompt(userMsg) {
 async function sendMessage() {
   const text = chatInput.value.trim();
   if (!text) return;
-  const key = (localStorage.getItem("mistral_api_key") || "").trim();
+  const p = currentProvider();
+  const key = (localStorage.getItem(providerSelect.value + "_api_key") || "").trim();
   if (!key) {
-    addMsg("bot", "⚠️ Entrez d'abord votre clé API Mistral dans le panneau de configuration à gauche, puis cliquez sur « Enregistrer ». Obtenez une clé sur console.mistral.ai.");
+    addMsg("bot", "⚠️ Entrez d'abord votre clé API " + p.name + " dans le panneau de configuration à gauche, puis cliquez sur « Enregistrer ». Clé gratuite sur " + p.signupHint + ".");
     return;
   }
   chatInput.value = "";
   sendBtn.disabled = true;
   addMsg("user", text);
   const thinking = addMsg("bot typing", "⏳ Réflexion en cours…");
-  const model = localStorage.getItem("mistral_model") || "mistral-small-latest";
+  const model = modelSelect.value;
   const sys = buildSystemPrompt(text);
 
   try {
-    const res = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    const res = await fetch(p.url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
       body: JSON.stringify({
@@ -496,8 +563,8 @@ async function sendMessage() {
     });
     if (!res.ok) {
       let msg = "Erreur " + res.status;
-      if (res.status === 401) msg = "Clé API invalide ou expirée. Vérifiez votre clé sur console.mistral.ai.";
-      else if (res.status === 429) msg = "Limite de requêtes atteinte. Si vous êtes sur le plan gratuit, vérifiez que le modèle choisi est « mistral-small-latest » (le modèle large nécessite un plan payant), patientez une minute puis réessayez.";
+      if (res.status === 401 || res.status === 403) msg = "Clé API invalide, expirée ou sans accès à ce modèle. Vérifiez votre clé et le modèle choisi.";
+      else if (res.status === 429) msg = "Limite de requêtes atteinte (quota gratuit). Patientez une minute puis réessayez.";
       throw new Error(msg);
     }
     const data = await res.json();
@@ -511,9 +578,9 @@ async function sendMessage() {
   } catch (err) {
     thinking.remove();
     const net = (err instanceof TypeError)
-      ? "\n\nSi l'erreur persiste, votre réseau ou le navigateur bloque l'appel à api.mistral.ai. La recherche de l'onglet « Formules » fonctionne toujours hors ligne."
+      ? "\n\nSi l'erreur persiste, votre réseau ou le navigateur bloque l'appel au fournisseur IA. La recherche de l'onglet « Formules » fonctionne toujours hors ligne."
       : "";
-    addMsg("bot err", "❌ " + (err.message === "Failed to fetch" ? "Impossible de joindre api.mistral.ai (connexion ou clé ?)." : err.message) + net);
+    addMsg("bot err", "❌ " + (err.message === "Failed to fetch" ? "Impossible de joindre le fournisseur IA (connexion ou clé ?)." : err.message) + net);
   }
   sendBtn.disabled = false;
 }
